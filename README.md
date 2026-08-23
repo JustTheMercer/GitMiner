@@ -1,3 +1,7 @@
+<p align="right">
+  English · <a href="./README_RU.md">Русский</a>
+</p>
+
 # GitMiner ⛏️
 
 GitMiner turns your GitHub contribution graph into an animated pixel-art mining scene.
@@ -63,6 +67,29 @@ jobs:
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push --force origin output
 ```
+
+A ready-to-copy version is available in [`examples/profile-workflow.yml`](./examples/profile-workflow.yml).
+
+#### Include private contributions (optional)
+
+The workflow above includes public contributions. To include private contribution counts as well:
+
+1. Open GitHub `Settings` → `Developer settings` → `Personal access tokens` → `Tokens (classic)`.
+2. Create a token with only the `read:user` scope.
+3. In your profile repository, open `Settings` → `Secrets and variables` → `Actions` and create a repository secret named `GH_PAT`.
+4. Add `github_token` to the GitMiner step:
+
+```yaml
+- uses: JustTheMercer/GitMiner@v1
+  with:
+    github_user_name: ${{ github.repository_owner }}
+    github_token: ${{ secrets.GH_PAT }}
+    outputs: |
+      dist/git-miner.svg
+      dist/git-miner-dark.svg?theme=github-dark
+```
+
+Never paste the token directly into the workflow or README. GitMiner uses contribution counts only and does not display private repository names.
 
 ### 2. Run it
 

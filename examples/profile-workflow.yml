@@ -15,6 +15,9 @@ jobs:
       - uses: JustTheMercer/GitMiner@v1
         with:
           github_user_name: ${{ github.repository_owner }}
+          # Optional: create a GH_PAT repository secret with the read:user scope,
+          # then uncomment the next line to include private contribution counts.
+          # github_token: ${{ secrets.GH_PAT }}
           outputs: |
             dist/git-miner.svg
             dist/git-miner-dark.svg?theme=github-dark

@@ -54,6 +54,18 @@ describe("SVG generation", () => {
     expect(svg).not.toContain("animation-delay");
   });
 
+  it("keeps cracks intact until their matching pickaxe impact", () => {
+    const crackAnimations = [
+      ...svg.matchAll(
+        /\.k(\d+)\{animation:k\1 [\d.]+s steps\(1,end\) infinite\}/g,
+      ),
+    ];
+    expect(crackAnimations.length).toBeGreaterThan(0);
+    expect(crackAnimations).toHaveLength(
+      [...svg.matchAll(/<path class="crack k\d+"/g)].length,
+    );
+  });
+
   it("holds the final miner position while the completion screen appears", () => {
     const route = svg.match(
       /@keyframes miner-route\{(.*?)\}@keyframes face-route/s,

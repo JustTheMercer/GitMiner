@@ -442,12 +442,14 @@ function blockAnimationCss(cell, index, timeline) {
     "0%{opacity:1;transform:translate(0,0) scale(1);filter:brightness(1)}"
   ];
   const crackFrames = ["0%{opacity:0;stroke-dashoffset:24}"];
+  let previousDamage = 1;
   for (const hit of hits) {
     const damage = n(1 - hit.hit * 0.075);
     const dash = n(24 * (1 - hit.hit / hit.hits));
     const shake = hit.isFinal ? 1.7 : 1;
     blockFrames.push(
-      `${pct(hit.windupEnd, timeline.duration)}%{transform:translate(0,0) scale(1);filter:brightness(${n(damage + 0.04)})}`,
+      `${pct(hit.start, timeline.duration)}%{transform:translate(0,0) scale(1);filter:brightness(${previousDamage})}`,
+      `${pct(hit.windupEnd, timeline.duration)}%{transform:translate(0,0) scale(1);filter:brightness(${previousDamage})}`,
       `${pct(hit.impactAt, timeline.duration)}%{transform:translate(${shake}px,-.5px) scale(${hit.isFinal ? 1.045 : 1.025});filter:brightness(1.35)}`,
       `${pct(hit.impactEnd, timeline.duration)}%{transform:translate(${-shake * 0.55}px,.5px) scale(.985);filter:brightness(${damage})}`,
       `${pct(hit.recoveryEnd, timeline.duration)}%{transform:translate(0,0) scale(1);filter:brightness(${damage})}`
@@ -456,6 +458,7 @@ function blockAnimationCss(cell, index, timeline) {
       `${pct(hit.impactAt, timeline.duration)}%{opacity:1;stroke-dashoffset:${dash}}`,
       `${pct(hit.recoveryEnd, timeline.duration)}%{opacity:1;stroke-dashoffset:${dash}}`
     );
+    previousDamage = damage;
   }
   blockFrames.push(
     `${pct(broken.start, timeline.duration)}%{opacity:1;transform:translate(0,0) scale(1)}`,
@@ -483,7 +486,7 @@ function blockAnimationCss(cell, index, timeline) {
 @keyframes k${index}{${crackFrames.join("")}}
 @keyframes f${index}{0%,${breakStart}%{opacity:0;transform:translate(0,0) rotate(0)}${fragmentAt}%{opacity:1;transform:translate(0,0) rotate(0)}${breakEnd}%{opacity:0;transform:translate(var(--fx),var(--fy)) rotate(var(--fr))}100%{opacity:0;transform:translate(var(--fx),var(--fy)) rotate(var(--fr))}}
 @keyframes p${index}{0%,${particleStart}%{opacity:0;transform:translate(0,0)}${particlePeak}%{opacity:1;transform:translate(0,0)}${particleFade}%{opacity:.8}${particleEnd}%{opacity:0;transform:translate(var(--dx),var(--dy))}100%{opacity:0;transform:translate(var(--dx),var(--dy))}}
-.b${index}{animation:b${index} ${n(timeline.duration)}s linear infinite;transform-origin:${cx}px ${cy}px}.k${index}{animation:k${index} ${n(timeline.duration)}s linear infinite}.f${index}>rect{animation:f${index} ${n(timeline.duration)}s cubic-bezier(.2,.7,.3,1) infinite;transform-origin:${cx}px ${cy}px}.p${index}>rect{animation:p${index} ${n(timeline.duration)}s cubic-bezier(.15,.65,.3,1) infinite}`;
+.b${index}{animation:b${index} ${n(timeline.duration)}s linear infinite;transform-origin:${cx}px ${cy}px}.k${index}{animation:k${index} ${n(timeline.duration)}s steps(1,end) infinite}.f${index}>rect{animation:f${index} ${n(timeline.duration)}s cubic-bezier(.2,.7,.3,1) infinite;transform-origin:${cx}px ${cy}px}.p${index}>rect{animation:p${index} ${n(timeline.duration)}s cubic-bezier(.15,.65,.3,1) infinite}`;
 }
 function renderBlocks(grid, timeline) {
   let activeIndex = 0;
