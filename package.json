@@ -1,0 +1,49 @@
+{
+  "name": "git-miner",
+  "version": "1.0.0",
+  "description": "An animated pixel-art miner for GitHub contribution graphs",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.js"
+    }
+  },
+  "bin": {
+    "git-miner": "./lib/cli.js"
+  },
+  "files": [
+    "action.yml",
+    "dist/action.js",
+    "fixtures",
+    "lib",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && esbuild src/action.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/action.js --banner:js=\"import{createRequire as __cr}from'module';const require=__cr(import.meta.url);\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src tests",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "generate": "node --import tsx src/cli.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "@types/node": "^24.3.0",
+    "@xmldom/xmldom": "^0.8.11",
+    "esbuild": "^0.25.9",
+    "eslint": "^9.34.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.41.0",
+    "vitest": "^3.2.4"
+  },
+  "packageManager": "pnpm@11.19.0"
+}

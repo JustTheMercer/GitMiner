@@ -1,0 +1,34 @@
+name: Generate GitMiner
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+jobs:
+  generate:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: JustTheMercer/GitMiner@v1
+        with:
+          github_user_name: ${{ github.repository_owner }}
+          outputs: |
+            dist/git-miner.svg
+            dist/git-miner-dark.svg?theme=github-dark
+
+      - name: Publish generated SVGs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist
+          git init
+          git checkout -b output
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Update GitMiner [skip ci]"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin output

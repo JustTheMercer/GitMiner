@@ -1,0 +1,33 @@
+name: Git Miner
+description: Generate an animated pixel-art miner from a GitHub contribution calendar
+author: Git Miner contributors
+branding:
+  icon: activity
+  color: yellow
+inputs:
+  github_user_name:
+    description: GitHub username whose contribution calendar will be mined
+    required: true
+  outputs:
+    description: Newline-separated SVG paths, optionally followed by theme/speed/show_stats query options
+    required: true
+    default: dist/git-miner.svg
+  github_token:
+    description: Token used with the GitHub GraphQL API
+    required: false
+    default: ${{ github.token }}
+  theme:
+    description: Default theme (github-light or github-dark)
+    required: false
+    default: github-light
+  speed:
+    description: Default speed preset (slow, normal or fast)
+    required: false
+    default: normal
+  show_stats:
+    description: Show the completion statistics screen
+    required: false
+    default: "true"
+runs:
+  using: node24
+  main: dist/action.js
