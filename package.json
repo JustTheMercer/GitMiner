@@ -25,6 +25,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && esbuild src/action.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/action.js --banner:js=\"import{createRequire as __cr}from'module';const require=__cr(import.meta.url);\"",
+    "prepack": "pnpm build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",

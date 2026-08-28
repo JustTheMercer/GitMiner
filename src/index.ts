@@ -9,5 +9,12 @@ export { createMiningPath } from "./core/traversal.js";
 export { createTimeline, targetDuration } from "./core/timeline.js";
 export { renderSvg } from "./svg.js";
 export { getTheme, themes } from "./themes.js";
-export { parseOutputOption, parseOutputOptions } from "./options.js";
+export {
+  parseBooleanOption,
+  parseEffects,
+  parseOutputOption,
+  parseOutputOptions,
+  parseSpeed,
+  parseTheme,
+} from "./options.js";
 export type * from "./types.js";

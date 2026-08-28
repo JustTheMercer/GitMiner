@@ -150,21 +150,32 @@ function minerRouteCss(timeline: Timeline): string {
   for (const move of moves) {
     frames.push(
       `${pct(move.start, timeline.duration)}%{transform:${transformPose(move.from, move.fromFacing)};opacity:1;animation-timing-function:cubic-bezier(.45,0,.2,1)}`,
+    );
+    if (move.via && move.viaAt !== undefined) {
+      frames.push(
+        `${pct(move.viaAt, timeline.duration)}%{transform:${transformPose(move.via, move.facing)};opacity:1;animation-timing-function:cubic-bezier(.35,0,.25,1)}`,
+      );
+    }
+    frames.push(
       `${pct(move.start + move.duration, timeline.duration)}%{transform:${transformPose(move.to, move.facing)};opacity:1}`,
     );
   }
   const stats = timeline.events.find(
     (event): event is StatsEvent => event.type === "stats",
-  )!;
+  );
   const lastMove = moves.at(-1);
   const finalPose = lastMove
     ? transformPose(lastMove.to, lastMove.facing)
     : transformPose({ x: -1, y: 6 }, "right");
-  frames.push(
-    `${pct(stats.start, timeline.duration)}%{transform:${finalPose};opacity:1}`,
-    `${pct(stats.start + stats.enterDuration, timeline.duration)}%{transform:${finalPose};opacity:0}`,
-    `100%{transform:${finalPose};opacity:0}`,
-  );
+  if (stats) {
+    frames.push(
+      `${pct(stats.start, timeline.duration)}%{transform:${finalPose};opacity:1}`,
+      `${pct(stats.start + stats.enterDuration, timeline.duration)}%{transform:${finalPose};opacity:0}`,
+      `100%{transform:${finalPose};opacity:0}`,
+    );
+  } else {
+    frames.push(`99.6%,100%{transform:${finalPose};opacity:1}`);
+  }
   return `@keyframes miner-route{${frames.join("")}}`;
 }
 
@@ -183,14 +194,18 @@ function minerFacingCss(timeline: Timeline): string {
   }
   const stats = timeline.events.find(
     (event): event is StatsEvent => event.type === "stats",
-  )!;
+  );
   const finalFacing = moves.at(-1)?.facing ?? "right";
   const finalScale = scale(finalFacing);
-  frames.push(
-    `${pct(stats.start, timeline.duration)}%{transform:scaleX(${finalScale})}`,
-    `${pct(stats.start + stats.enterDuration, timeline.duration)}%{transform:scaleX(${finalScale})}`,
-    `100%{transform:scaleX(${finalScale})}`,
-  );
+  if (stats) {
+    frames.push(
+      `${pct(stats.start, timeline.duration)}%{transform:scaleX(${finalScale})}`,
+      `${pct(stats.start + stats.enterDuration, timeline.duration)}%{transform:scaleX(${finalScale})}`,
+      `100%{transform:scaleX(${finalScale})}`,
+    );
+  } else {
+    frames.push(`100%{transform:scaleX(${finalScale})}`);
+  }
   return `@keyframes face-route{${frames.join("")}}`;
 }
 
@@ -290,7 +305,8 @@ function statsCss(timeline: Timeline, showStats: boolean): string {
   if (!showStats) return ".stats{display:none}";
   const event = timeline.events.find(
     (item): item is StatsEvent => item.type === "stats",
-  )!;
+  );
+  if (!event) return ".stats{display:none}";
   const start = pct(event.start, timeline.duration);
   const enter = pct(event.start + event.enterDuration, timeline.duration);
   const exit = pct(event.exitStart, timeline.duration);
@@ -301,7 +317,10 @@ function statsCss(timeline: Timeline, showStats: boolean): string {
 function sceneResetCss(timeline: Timeline): string {
   const stats = timeline.events.find(
     (event): event is StatsEvent => event.type === "stats",
-  )!;
+  );
+  if (!stats) {
+    return "@keyframes grid-fade{0%,100%{opacity:1}}";
+  }
   const start = pct(stats.start, timeline.duration);
   const faded = pct(stats.start + stats.enterDuration, timeline.duration);
   const end = pct(stats.start + stats.duration, timeline.duration);
@@ -318,20 +337,22 @@ export function renderSvg(
   const height = TOP + 7 * CELL + FOOTER;
   const blocks = renderBlocks(grid, timeline);
   const title = `${options.username}'s GitHub contribution mine`;
+  const showStats = options.showStats ?? true;
+  const effects = options.effects ?? "normal";
 
   const css = `
-svg{background:${theme.background}}.frame{fill:${theme.panel};stroke:${theme.gridLine}}.empty{fill:${theme.empty};stroke:${theme.gridLine};stroke-width:.6}.b{stroke:${theme.gridLine};stroke-width:.5}.ore-stone{fill:${theme.ore.stone}}.ore-copper{fill:${theme.ore.copper}}.ore-gold{fill:${theme.ore.gold}}.ore-diamond{fill:${theme.ore.diamond}}.ore-stone .shine{fill:${theme.oreHighlight.stone}}.ore-copper .shine{fill:${theme.oreHighlight.copper}}.ore-gold .shine{fill:${theme.oreHighlight.gold}}.ore-diamond .shine{fill:${theme.oreHighlight.diamond}}.crack{opacity:0;fill:none;stroke:${theme.crack};stroke-width:1;stroke-linecap:square;stroke-dasharray:24}.fragments>rect,.particles>rect{opacity:0}.grid{animation:grid-fade ${n(timeline.duration)}s linear infinite}.miner{transform:${transformPose({ x: -1, y: 6 }, "right")};animation:miner-route ${n(timeline.duration)}s linear infinite}.miner-facing{transform-origin:8px 10px;animation:face-route ${n(timeline.duration)}s linear infinite}.miner-gait{transform-origin:8px 16px;animation:gait ${n(timeline.duration)}s linear infinite}.miner-idle{animation:idle-bob 1.7s ease-in-out infinite}.miner-action{transform-origin:10px 12px;animation:miner-action ${n(timeline.duration)}s linear infinite}.helmet{fill:${theme.miner.helmet}}.helmet-light{fill:${theme.miner.helmetLight}}.skin{fill:${theme.miner.skin}}.eye{fill:${theme.text};transform-origin:10px 6px;animation:blink 4.8s steps(1) infinite}.clothes{fill:${theme.miner.clothes}}.boots{fill:${theme.miner.boots}}.walk-a{animation:walk-a ${n(timeline.duration)}s linear infinite}.walk-b{animation:walk-b ${n(timeline.duration)}s linear infinite}.tool{fill:${theme.miner.tool}}.pick{animation:pick-swing ${n(timeline.duration)}s linear infinite}.impact{opacity:0;transform-origin:21px 9px;animation:impact-flash ${n(timeline.duration)}s linear infinite}.impact-star{fill:${theme.miner.helmetLight}}.impact-debris{fill:${theme.text}}@keyframes idle-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-.45px)}}@keyframes blink{0%,93%,95%,100%{transform:scaleY(1)}94%{transform:scaleY(.15)}}.label{font:600 10px ui-monospace,SFMono-Regular,Consolas,monospace;fill:${theme.text}}.muted{font:7px ui-monospace,SFMono-Regular,Consolas,monospace;fill:${theme.mutedText}}.stats{opacity:0;animation:stats-in ${n(timeline.duration)}s ease-out infinite;transform-origin:center}.stats-title{font:700 16px ui-monospace,SFMono-Regular,Consolas,monospace;fill:${theme.text};letter-spacing:1px}.stats-copy{font:9px ui-monospace,SFMono-Regular,Consolas,monospace;fill:${theme.mutedText}}${blocks.css}${minerRouteCss(timeline)}${minerFacingCss(timeline)}${minerActionCss(timeline)}${walkingCss(timeline)}${statsCss(timeline, options.showStats ?? true)}${sceneResetCss(timeline)}.miner-facing,.walk-a,.walk-b{animation-timing-function:steps(1,end)}`.replace(
+svg{background:${theme.background}}.frame{fill:${theme.panel};stroke:${theme.gridLine}}.empty{fill:${theme.empty};stroke:${theme.gridLine};stroke-width:.6}.b{stroke:${theme.gridLine};stroke-width:.5}.ore-stone{fill:${theme.ore.stone}}.ore-copper{fill:${theme.ore.copper}}.ore-gold{fill:${theme.ore.gold}}.ore-diamond{fill:${theme.ore.diamond}}.ore-stone .shine{fill:${theme.oreHighlight.stone}}.ore-copper .shine{fill:${theme.oreHighlight.copper}}.ore-gold .shine{fill:${theme.oreHighlight.gold}}.ore-diamond .shine{fill:${theme.oreHighlight.diamond}}.crack{opacity:0;fill:none;stroke:${theme.crack};stroke-width:1;stroke-linecap:square;stroke-dasharray:24}.fragments>rect,.particles>rect{opacity:0}.effects-low .particles>rect:nth-child(n+3),.effects-low .fragments>rect:nth-child(n+3){display:none}.effects-low .impact{display:none}.effects-high .ore-gold.particles{filter:drop-shadow(0 0 2px ${theme.oreHighlight.gold})}.effects-high .ore-diamond.particles{filter:drop-shadow(0 0 2px ${theme.oreHighlight.diamond})}.effects-high .ore-gold .shine,.effects-high .ore-diamond .shine{animation:ore-glint 1.8s steps(2,end) infinite}@keyframes ore-glint{0%,72%,100%{opacity:.55}78%{opacity:1}}.grid{animation:grid-fade ${n(timeline.duration)}s linear infinite}.miner{transform:${transformPose({ x: -1, y: 6 }, "right")};animation:miner-route ${n(timeline.duration)}s linear infinite}.miner-facing{transform-origin:8px 10px;animation:face-route ${n(timeline.duration)}s linear infinite}.miner-gait{transform-origin:8px 16px;animation:gait ${n(timeline.duration)}s linear infinite}.miner-idle{animation:idle-bob 1.7s ease-in-out infinite}.miner-action{transform-origin:10px 12px;animation:miner-action ${n(timeline.duration)}s linear infinite}.helmet{fill:${theme.miner.helmet}}.helmet-light{fill:${theme.miner.helmetLight}}.skin{fill:${theme.miner.skin}}.eye{fill:${theme.text};transform-origin:10px 6px;animation:blink 4.8s steps(1) infinite}.clothes{fill:${theme.miner.clothes}}.boots{fill:${theme.miner.boots}}.walk-a{animation:walk-a ${n(timeline.duration)}s linear infinite}.walk-b{animation:walk-b ${n(timeline.duration)}s linear infinite}.tool{fill:${theme.miner.tool}}.pick{animation:pick-swing ${n(timeline.duration)}s linear infinite}.impact{opacity:0;transform-origin:21px 9px;animation:impact-flash ${n(timeline.duration)}s linear infinite}.impact-star{fill:${theme.miner.helmetLight}}.impact-debris{fill:${theme.text}}@keyframes idle-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-.45px)}}@keyframes blink{0%,93%,95%,100%{transform:scaleY(1)}94%{transform:scaleY(.15)}}.label{font:600 10px ui-monospace,SFMono-Regular,Consolas,monospace;fill:${theme.text}}.muted{font:7px ui-monospace,SFMono-Regular,Consolas,monospace;fill:${theme.mutedText}}.stats{opacity:0;animation:stats-in ${n(timeline.duration)}s ease-out infinite;transform-origin:center}.stats-title{font:700 16px ui-monospace,SFMono-Regular,Consolas,monospace;fill:${theme.text};letter-spacing:1px}.stats-copy{font:9px ui-monospace,SFMono-Regular,Consolas,monospace;fill:${theme.mutedText}}${blocks.css}${minerRouteCss(timeline)}${minerFacingCss(timeline)}${minerActionCss(timeline)}${walkingCss(timeline)}${statsCss(timeline, showStats)}${sceneResetCss(timeline)}.miner-facing,.walk-a,.walk-b{animation-timing-function:steps(1,end)}@media (prefers-reduced-motion:reduce){svg *{animation:none!important}.stats{display:none!important}.grid{opacity:1!important}.miner{transform:${transformPose({ x: -1, y: 6 }, "right")} .fragments>rect,.particles>rect{opacity:0!important}}`.replace(
     /\s+/g,
     " ",
   );
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" class="effects-${effects}" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="title desc">
 <title id="title">${escapeXml(title)}</title><desc id="desc">Animated pixel-art miner extracting ${timeline.stats.blocksMined} GitHub contribution blocks with ${timeline.stats.totalHits} pickaxe hits. The animation loops every ${n(timeline.duration)} seconds.</desc>
 <style>${css}</style>
 <rect width="${width}" height="${height}" rx="8" fill="${theme.background}"/><rect class="frame" x="8" y="8" width="${width - 16}" height="${height - 16}" rx="6"/>
 <text class="label" x="${LEFT}" y="24">GIT MINER · ${escapeXml(options.username)}</text><text class="muted" x="${width - LEFT}" y="24" text-anchor="end">${timeline.stats.activeDays} ACTIVE DAYS · ${timeline.stats.totalHits} HITS</text>
 <g class="grid">${blocks.markup}<path d="M${LEFT - 5} ${TOP + 7 * CELL + 5}H${width - LEFT + 5}" stroke="${theme.gridLine}" stroke-width="2"/>${renderMiner()}</g>
-<g class="stats" text-anchor="middle"><rect x="${width / 2 - 190}" y="${TOP + 4}" width="380" height="76" rx="6" fill="${theme.panel}" stroke="${theme.gridLine}" opacity=".97"/><text class="stats-title" x="${width / 2}" y="${TOP + 33}">MINING COMPLETE</text><text class="stats-copy" x="${width / 2}" y="${TOP + 51}">${timeline.stats.totalContributions} CONTRIBUTIONS · ${timeline.stats.activeDays} ACTIVE DAYS</text><path d="M${width / 2 - 22} ${TOP + 61}h30v8h-30z m30 3h7v5h-7z" fill="${theme.ore.gold}"/><circle cx="${width / 2 - 14}" cy="${TOP + 72}" r="3" fill="${theme.text}"/><circle cx="${width / 2 + 3}" cy="${TOP + 72}" r="3" fill="${theme.text}"/></g>
+${showStats ? `<g class="stats" text-anchor="middle"><rect x="${width / 2 - 190}" y="${TOP + 4}" width="380" height="76" rx="6" fill="${theme.panel}" stroke="${theme.gridLine}" opacity=".97"/><text class="stats-title" x="${width / 2}" y="${TOP + 33}">MINING COMPLETE</text><text class="stats-copy" x="${width / 2}" y="${TOP + 51}">${timeline.stats.totalContributions} CONTRIBUTIONS · ${timeline.stats.activeDays} ACTIVE DAYS</text><path d="M${width / 2 - 22} ${TOP + 61}h30v8h-30z m30 3h7v5h-7z" fill="${theme.ore.gold}"/><circle cx="${width / 2 - 14}" cy="${TOP + 72}" r="3" fill="${theme.text}"/><circle cx="${width / 2 + 3}" cy="${TOP + 72}" r="3" fill="${theme.text}"/></g>` : ""}
 </svg>`;
 }

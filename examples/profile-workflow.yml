@@ -5,11 +5,16 @@ on:
     - cron: "0 */12 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: git-miner-${{ github.repository }}
+  cancel-in-progress: true
+
 jobs:
   generate:
     permissions:
       contents: write
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: JustTheMercer/GitMiner@v1

@@ -15,7 +15,9 @@ GitMiner превращает график активности GitHub в пик
 - GitMiner получает календарь активности через GitHub API.
 - Уровни активности превращаются в каменные, медные, золотые или алмазные блоки.
 - Для разрушения более ценных блоков требуется больше ударов киркой.
+- Шахтёр перемещается по линиям календарной сетки, а разные типы руды имеют собственные эффекты разрушения.
 - Готовый SVG не использует JavaScript и внешние ресурсы и работает прямо в README профиля GitHub.
+- При включённом системном режиме уменьшения движения отображается статичная версия.
 
 ## Добавление GitMiner в профиль
 
@@ -39,11 +41,16 @@ on:
     - cron: "0 */12 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: git-miner-${{ github.repository }}
+  cancel-in-progress: true
+
 jobs:
   generate:
     permissions:
       contents: write
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: JustTheMercer/GitMiner@v1
@@ -128,15 +135,25 @@ Workflow создаст ветку `output` со светлой и тёмной 
 
 ```yaml
 outputs: |
-  dist/git-miner.svg?theme=github-light&speed=normal
-  dist/git-miner-dark.svg?theme=github-dark&speed=normal
+  dist/git-miner.svg?theme=github-light&speed=1.2
+  dist/git-miner-dark.svg?theme=github-dark&speed=1.2&effects=high
 ```
 
 Доступные параметры:
 
 - `theme`: тема `github-light` или `github-dark`
-- `speed`: скорость `slow`, `normal` или `fast`
+- `speed`: `slow`, `normal`, `fast` или множитель от `0.4` до `3` (`1` — обычная скорость, `2` — вдвое быстрее)
+- `effects`: количество визуальных эффектов — `low`, `normal` или `high`
 - `show_stats`: показывать итоговый экран — `true` или `false`
+
+Пресеты сохранены для совместимости, а числовое значение позволяет точно настроить скорость:
+
+```yaml
+outputs: |
+  dist/git-miner-slow.svg?speed=0.65
+  dist/git-miner-normal.svg?speed=1
+  dist/git-miner-fast.svg?speed=1.75&show_stats=false
+```
 
 ## Локальная разработка
 

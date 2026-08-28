@@ -3,9 +3,14 @@ import { dirname } from "node:path";
 import { createContributionGrid } from "./core/grid.js";
 import { createTimeline } from "./core/timeline.js";
 import { fetchGitHubContributions } from "./github.js";
-import { parseOutputOptions } from "./options.js";
+import {
+  parseBooleanOption,
+  parseEffects,
+  parseOutputOptions,
+  parseSpeed,
+  parseTheme,
+} from "./options.js";
 import { renderSvg } from "./svg.js";
-import type { Speed, ThemeName } from "./types.js";
 
 const input = (name: string) =>
   process.env[`INPUT_${name.toUpperCase()}`]?.trim() ?? "";
@@ -23,11 +28,10 @@ async function main() {
   const username = input("github_user_name");
   const token = input("github_token") || process.env.GITHUB_TOKEN || "";
   const outputs = parseOutputOptions(input("outputs"), {
-    theme: (input("theme") || "github-light") as ThemeName,
-    speed: (input("speed") || "normal") as Speed,
-    showStats: !["false", "0", "no"].includes(
-      (input("show_stats") || "true").toLowerCase(),
-    ),
+    theme: parseTheme(input("theme")),
+    speed: parseSpeed(input("speed")),
+    effects: parseEffects(input("effects")),
+    showStats: parseBooleanOption(input("show_stats"), true),
   });
 
   process.stdout.write(`⛏️ Fetching contributions for ${username}\n`);
@@ -35,11 +39,14 @@ async function main() {
   const grid = createContributionGrid(contributions);
 
   for (const output of outputs) {
-    const timeline = createTimeline(grid, output.speed);
+    const timeline = createTimeline(grid, output.speed, {
+      showStats: output.showStats,
+    });
     const svg = renderSvg(grid, timeline, {
       username,
       theme: output.theme,
       speed: output.speed,
+      effects: output.effects,
       showStats: output.showStats,
     });
     await mkdir(dirname(output.filename), { recursive: true });

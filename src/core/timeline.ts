@@ -8,19 +8,14 @@ import type {
   Speed,
   Timeline,
 } from "../types.js";
+import { parseSpeed } from "../options.js";
 import { createMiningPath } from "./traversal.js";
 
-const SPEED_FACTOR: Record<Speed, number> = {
-  slow: 1.2,
+const PRESET_MULTIPLIER = {
+  slow: 0.75,
   normal: 1,
-  fast: 0.82,
-};
-
-const HARD_MAX: Record<Speed, number> = {
-  slow: 64,
-  normal: 60,
-  fast: 54,
-};
+  fast: 1.5,
+} as const;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -30,6 +25,14 @@ export const pointDistance = (a: Point, b: Point) =>
 
 const detailFactor = (activeCells: number) =>
   clamp(1.46 - activeCells * 0.0042, 0.84, 1.35);
+
+export function speedMultiplier(speed: Speed = "normal"): number {
+  const parsed = parseSpeed(speed);
+  return typeof parsed === "number" ? parsed : PRESET_MULTIPLIER[parsed];
+}
+
+const hardMaxFor = (multiplier: number) =>
+  clamp(60 / Math.sqrt(multiplier), 38, 90);
 
 const facingFor = (from: Point, to: Point, fallback: Facing): Facing => {
   if (to.x > from.x) return "right";
@@ -41,18 +44,20 @@ export function targetDuration(
   activeCells: number,
   speed: Speed = "normal",
 ): number {
+  const parsedSpeed = parseSpeed(speed);
+  const multiplier = speedMultiplier(parsedSpeed);
   const detail = detailFactor(activeCells);
-  const factor = SPEED_FACTOR[speed];
+  const factor = 1 / multiplier;
   const assumedHits = activeCells * 2.5;
   const assumedDistance = activeCells * 1.35;
   const hit = clamp(
     0.06 * detail * factor,
-    speed === "fast" ? 0.05 : 0.055,
+    multiplier > 1.25 ? 0.05 : 0.055,
     0.08,
   );
   const move = clamp((0.032 + 1.35 * 0.015) * detail * factor, 0.05, 0.3);
   return Math.min(
-    HARD_MAX[speed],
+    hardMaxFor(multiplier),
     3.1 * factor + assumedHits * hit + assumedDistance * (move / 1.35),
   );
 }
@@ -61,16 +66,19 @@ function createNaturalTimeline(
   grid: ContributionGrid,
   path: OreCell[],
   speed: Speed,
+  showStats: boolean,
   compression: number,
   naturalDuration: number,
 ): Timeline {
-  const factor = SPEED_FACTOR[speed];
+  const multiplier = speedMultiplier(speed);
+  const factor = 1 / multiplier;
   const detail = detailFactor(path.length);
   const isCompressed = compression < 0.995;
-  const hitFloor = isCompressed ? 0.045 : speed === "fast" ? 0.05 : 0.055;
-  const moveFloor = isCompressed ? 0.035 : speed === "fast" ? 0.045 : 0.05;
+  const hitFloor = isCompressed ? 0.045 : multiplier > 1.25 ? 0.05 : 0.055;
+  const moveFloor = isCompressed ? 0.035 : multiplier > 1.25 ? 0.045 : 0.05;
   const naturalHit = 0.06 * detail * factor * compression;
-  const hitCeiling = speed === "slow" ? 0.09 : speed === "fast" ? 0.075 : 0.078;
+  const hitCeiling =
+    multiplier < 0.9 ? 0.09 : multiplier > 1.25 ? 0.075 : 0.078;
   const breakDuration = clamp(
     0.075 * detail * factor * Math.sqrt(compression),
     0.05,
@@ -88,19 +96,30 @@ function createNaturalTimeline(
   let travelDistance = 0;
   let totalHits = 0;
   let lastBreakEnd = time;
+  let lastEffectEnd = time;
 
   path.forEach((cell) => {
     const distance = pointDistance(cursor, cell);
     const nextFacing = facingFor(cursor, cell, facing);
+    const horizontalDistance = Math.abs(cell.x - cursor.x);
+    const via =
+      horizontalDistance > 0 && cell.y !== cursor.y
+        ? { x: cell.x, y: cursor.y }
+        : undefined;
     const moveDuration = clamp(
       (0.032 + distance * 0.015) * detail * factor * compression,
       moveFloor,
       isCompressed ? 0.22 : 0.3,
     );
+    const moveStart = time;
+    const viaAt = via
+      ? moveStart + moveDuration * (horizontalDistance / distance)
+      : undefined;
     events.push({
       type: "move",
       from: cursor,
       to: cell,
+      ...(via && viaAt !== undefined ? { via, viaAt } : {}),
       fromFacing: facing,
       facing: nextFacing,
       easing: "ease-in-out",
@@ -153,6 +172,7 @@ function createNaturalTimeline(
       fadeAt: fragmentAt + particleLifetime * 0.58,
     });
     lastBreakEnd = Math.max(lastBreakEnd, time + breakDuration);
+    lastEffectEnd = Math.max(lastEffectEnd, fragmentAt + particleLifetime);
 
     // Destruction continues while the miner starts walking to the next target.
     // This preserves readable fragments without serializing every decorative
@@ -164,15 +184,20 @@ function createNaturalTimeline(
   // Particles may finish beneath the short cross-fade, but the miner never
   // travels or changes stance after the final block.
   const statsStart = Math.max(time, lastBreakEnd);
-  const statsEvent = {
-    type: "stats" as const,
-    start: statsStart,
-    duration: statsDuration,
-    enterDuration: clamp(0.12 * factor, 0.1, 0.15),
-    exitStart: statsStart + statsDuration - clamp(0.22 * factor, 0.18, 0.28),
-  };
-  events.push(statsEvent);
-  const duration = statsEvent.start + statsEvent.duration + resetPause;
+  let duration: number;
+  if (showStats) {
+    const statsEvent = {
+      type: "stats" as const,
+      start: statsStart,
+      duration: statsDuration,
+      enterDuration: clamp(0.12 * factor, 0.1, 0.15),
+      exitStart: statsStart + statsDuration - clamp(0.22 * factor, 0.18, 0.28),
+    };
+    events.push(statsEvent);
+    duration = statsEvent.start + statsEvent.duration + resetPause;
+  } else {
+    duration = Math.max(statsStart, lastEffectEnd) + resetPause;
+  }
 
   return {
     duration,
@@ -187,6 +212,7 @@ function createNaturalTimeline(
     },
     timing: {
       speed,
+      speedMultiplier: multiplier,
       naturalDuration,
       compression,
       particleLifetime,
@@ -197,11 +223,22 @@ function createNaturalTimeline(
 export function createTimeline(
   grid: ContributionGrid,
   speed: Speed = "normal",
+  options: { showStats?: boolean } = {},
 ): Timeline {
+  const parsedSpeed = parseSpeed(speed);
+  const showStats = options.showStats ?? true;
   const path = createMiningPath(grid);
-  let timeline = createNaturalTimeline(grid, path, speed, 1, 0);
+  let timeline = createNaturalTimeline(
+    grid,
+    path,
+    parsedSpeed,
+    showStats,
+    1,
+    0,
+  );
   const naturalDuration = timeline.duration;
-  const hardMax = HARD_MAX[speed];
+  const multiplier = speedMultiplier(parsedSpeed);
+  const hardMax = hardMaxFor(multiplier);
   let compression = 1;
 
   for (
@@ -209,7 +246,7 @@ export function createTimeline(
     attempt < 5 && timeline.duration > hardMax;
     attempt += 1
   ) {
-    const fixedTime = 3.1 * SPEED_FACTOR[speed];
+    const fixedTime = (showStats ? 3.1 : 1.1) / multiplier;
     compression *= clamp(
       (hardMax - fixedTime) / Math.max(0.001, timeline.duration - fixedTime),
       0.55,
@@ -218,7 +255,8 @@ export function createTimeline(
     timeline = createNaturalTimeline(
       grid,
       path,
-      speed,
+      parsedSpeed,
+      showStats,
       compression,
       naturalDuration,
     );

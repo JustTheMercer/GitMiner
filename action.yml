@@ -9,7 +9,7 @@ inputs:
     description: GitHub username whose contribution calendar will be mined
     required: true
   outputs:
-    description: Newline-separated SVG paths, optionally followed by theme/speed/show_stats query options
+    description: Newline-separated SVG paths, optionally followed by theme/speed/effects/show_stats query options
     required: true
     default: dist/git-miner.svg
   github_token:
@@ -21,7 +21,11 @@ inputs:
     required: false
     default: github-light
   speed:
-    description: Default speed preset (slow, normal or fast)
+    description: Default speed (slow, normal, fast, or a multiplier from 0.4 to 3)
+    required: false
+    default: normal
+  effects:
+    description: Visual effects level (low, normal or high)
     required: false
     default: normal
   show_stats:

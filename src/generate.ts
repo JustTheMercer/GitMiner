@@ -13,7 +13,9 @@ export function generateGitMinerFromContributions(
   options: RenderOptions,
 ): { svg: string } {
   const grid = createContributionGrid(contributions);
-  const timeline = createTimeline(grid, options.speed);
+  const timeline = createTimeline(grid, options.speed, {
+    showStats: options.showStats ?? true,
+  });
   return { svg: renderSvg(grid, timeline, options) };
 }
 
@@ -26,6 +28,7 @@ export async function generateGitMiner(
     username: options.username,
     theme: options.theme ?? "github-light",
     speed: options.speed ?? "normal",
+    effects: options.effects ?? "normal",
     showStats: options.showStats ?? true,
   };
   return generateGitMinerFromContributions(contributions, renderOptions);

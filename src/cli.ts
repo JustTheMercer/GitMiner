@@ -7,7 +7,7 @@ import {
   generateGitMinerFromContributions,
 } from "./generate.js";
 import { createFixtureContributions, type FixtureSpec } from "./fixture.js";
-import type { Speed, ThemeName } from "./types.js";
+import { parseEffects, parseSpeed, parseTheme } from "./options.js";
 
 function valueAfter(args: string[], flag: string): string | undefined {
   const index = args.indexOf(flag);
@@ -26,9 +26,37 @@ async function main() {
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
     process.stdout.write(
-      `Git Miner\n\nUsage:\n  pnpm generate --fixture [medium] [--theme github-dark]\n  pnpm generate --username octocat --token TOKEN\n\nOptions:\n  --output PATH       default: dist/git-miner.svg\n  --theme THEME       github-light | github-dark\n  --speed SPEED       slow | normal | fast\n  --no-stats          hide completion statistics\n`,
+      `Git Miner\n\nUsage:\n  pnpm generate --fixture [medium] [--theme github-dark]\n  pnpm generate --username octocat --token TOKEN\n\nOptions:\n  --output PATH       default: dist/git-miner.svg\n  --theme THEME       github-light | github-dark\n  --speed SPEED       slow | normal | fast | 0.4..3\n  --effects LEVEL     low | normal | high\n  --no-stats          hide the completion phase\n`,
     );
     return;
+  }
+
+  const knownFlags = new Set([
+    "--fixture",
+    "--username",
+    "--token",
+    "--output",
+    "--theme",
+    "--speed",
+    "--effects",
+    "--no-stats",
+  ]);
+  const unknownFlag = args.find(
+    (argument) => argument.startsWith("--") && !knownFlags.has(argument),
+  );
+  if (unknownFlag) throw new Error(`Unknown option: ${unknownFlag}`);
+
+  for (const flag of [
+    "--username",
+    "--token",
+    "--output",
+    "--theme",
+    "--speed",
+    "--effects",
+  ]) {
+    if (args.includes(flag) && valueAfter(args, flag) === undefined) {
+      throw new Error(`Option ${flag} requires a value`);
+    }
   }
 
   const fixtureFlag = args.indexOf("--fixture");
@@ -38,8 +66,9 @@ async function main() {
       : (valueAfter(args, "--fixture") ?? "medium");
   const username =
     valueAfter(args, "--username") ?? (fixture ? `fixture/${fixture}` : "");
-  const theme = (valueAfter(args, "--theme") ?? "github-light") as ThemeName;
-  const speed = (valueAfter(args, "--speed") ?? "normal") as Speed;
+  const theme = parseTheme(valueAfter(args, "--theme"));
+  const speed = parseSpeed(valueAfter(args, "--speed"));
+  const effects = parseEffects(valueAfter(args, "--effects"));
   const output = resolve(valueAfter(args, "--output") ?? "dist/git-miner.svg");
   const showStats = !args.includes("--no-stats");
   const token = valueAfter(args, "--token");
@@ -49,6 +78,7 @@ async function main() {
         username,
         theme,
         speed,
+        effects,
         showStats,
       })
     : await generateGitMiner({
@@ -56,6 +86,7 @@ async function main() {
         ...(token ? { githubToken: token } : {}),
         theme,
         speed,
+        effects,
         showStats,
       });
 

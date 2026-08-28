@@ -159,7 +159,7 @@ describe("timeline", () => {
     const cells: ContributionCell[] = [
       { x: 0, y: 6, date: "2025-01-01", count: 1, level: 1 },
       { x: 1, y: 6, date: "2025-01-02", count: 1, level: 1 },
-      { x: 6, y: 6, date: "2025-01-03", count: 1, level: 1 },
+      { x: 6, y: 1, date: "2025-01-03", count: 1, level: 1 },
     ];
     const moves = eventsOfType(
       createTimeline(createContributionGrid(cells, 7)),
@@ -168,6 +168,7 @@ describe("timeline", () => {
     expect(moves).toHaveLength(3);
     expect(moves.every((event) => event.easing === "ease-in-out")).toBe(true);
     expect(moves[2]!.duration).toBeGreaterThan(moves[1]!.duration);
+    expect(moves.some((event) => event.via && event.viaAt)).toBe(true);
   });
 
   it("keeps absolute particle lifetimes independent of total density", () => {
@@ -192,6 +193,26 @@ describe("timeline", () => {
       Math.min(...eventsOfType(fast, "break").map((event) => event.duration)),
     ).toBeGreaterThanOrEqual(0.05);
     expect(fast.timing.particleLifetime).toBeGreaterThanOrEqual(0.12);
+  });
+
+  it("supports custom numeric speed multipliers", () => {
+    const slow = fixtureTimeline("medium", 0.6);
+    const normal = fixtureTimeline("medium", 1);
+    const fast = fixtureTimeline("medium", 2);
+    expect(slow.duration).toBeGreaterThan(normal.duration);
+    expect(normal.duration).toBeGreaterThan(fast.duration);
+    expect(fast.timing.speedMultiplier).toBe(2);
+  });
+
+  it("removes the completion phase when statistics are disabled", () => {
+    const grid = createContributionGrid(fixture);
+    const withStats = createTimeline(grid, "normal", { showStats: true });
+    const withoutStats = createTimeline(grid, "normal", { showStats: false });
+    expect(eventsOfType(withoutStats, "stats")).toHaveLength(0);
+    expect(withoutStats.duration).toBeLessThan(withStats.duration);
+    expect(eventsOfType(withoutStats, "particles").at(-1)!.start).toBeLessThan(
+      withoutStats.duration,
+    );
   });
 
   it("compresses an extreme calendar close to the hard cap", () => {

@@ -30,6 +30,8 @@ export type MoveEvent = Timed & {
   type: "move";
   from: Point;
   to: Point;
+  via?: Point;
+  viaAt?: number;
   fromFacing: Facing;
   facing: Facing;
   easing: "ease-in-out";
@@ -83,13 +85,16 @@ export type Timeline = {
   };
   timing: {
     speed: Speed;
+    speedMultiplier: number;
     naturalDuration: number;
     compression: number;
     particleLifetime: number;
   };
 };
 
-export type Speed = "slow" | "normal" | "fast";
+export type SpeedPreset = "slow" | "normal" | "fast";
+export type Speed = SpeedPreset | number;
+export type EffectsLevel = "low" | "normal" | "high";
 export type ThemeName = "github-light" | "github-dark";
 
 export type GenerateOptions = {
@@ -97,6 +102,7 @@ export type GenerateOptions = {
   githubToken?: string;
   theme?: ThemeName;
   speed?: Speed;
+  effects?: EffectsLevel;
   showStats?: boolean;
 };
 

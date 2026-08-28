@@ -15,7 +15,9 @@ The miner walks between active contribution cells, mines different ore blocks, b
 - GitMiner reads your public contribution calendar through the GitHub API.
 - Contribution levels become stone, copper, gold, or diamond blocks.
 - Harder blocks require more pickaxe hits.
+- The miner follows the calendar grid and ore types use distinct break effects.
 - The generated SVG is self-contained, uses no JavaScript or external assets, and works directly in a GitHub Profile README.
+- Reduced-motion preferences are respected with a static fallback.
 
 ## Add GitMiner to your profile
 
@@ -39,11 +41,16 @@ on:
     - cron: "0 */12 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: git-miner-${{ github.repository }}
+  cancel-in-progress: true
+
 jobs:
   generate:
     permissions:
       contents: write
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: JustTheMercer/GitMiner@v1
@@ -128,15 +135,25 @@ Options can be added after an output path:
 
 ```yaml
 outputs: |
-  dist/git-miner.svg?theme=github-light&speed=normal
-  dist/git-miner-dark.svg?theme=github-dark&speed=normal
+  dist/git-miner.svg?theme=github-light&speed=1.2
+  dist/git-miner-dark.svg?theme=github-dark&speed=1.2&effects=high
 ```
 
 Available options:
 
 - `theme`: `github-light` or `github-dark`
-- `speed`: `slow`, `normal`, or `fast`
+- `speed`: `slow`, `normal`, `fast`, or a playback multiplier from `0.4` to `3` (`1` is normal, `2` is twice as fast)
+- `effects`: `low`, `normal`, or `high`
 - `show_stats`: `true` or `false`
+
+Presets remain available for compatibility. Numeric speed gives finer control:
+
+```yaml
+outputs: |
+  dist/git-miner-slow.svg?speed=0.65
+  dist/git-miner-normal.svg?speed=1
+  dist/git-miner-fast.svg?speed=1.75&show_stats=false
+```
 
 ## Local development
 

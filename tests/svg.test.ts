@@ -46,6 +46,21 @@ describe("SVG generation", () => {
     expect(svg).toContain("stroke-dashoffset");
     expect(svg).not.toMatch(/<script|javascript:/i);
     expect(svg).not.toMatch(/<image\b|(?:href|src)=["']https?:\/\//i);
+    expect(svg).toContain("@media (prefers-reduced-motion:reduce)");
+  });
+
+  it("fully removes the completion scene when stats are disabled", () => {
+    const result = generateGitMinerFromContributions(contributions, {
+      username: "octocat",
+      theme: "github-dark",
+      speed: 1.4,
+      effects: "high",
+      showStats: false,
+    });
+    expect(result.svg).toContain('class="effects-high"');
+    expect(result.svg).not.toContain("MINING COMPLETE");
+    expect(result.svg).not.toContain("opacity:.08");
+    expect(result.svg).not.toContain("NaN");
   });
 
   it("uses event-specific absolute particle timing", () => {

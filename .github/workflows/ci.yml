@@ -10,6 +10,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/setup@v1
@@ -24,4 +25,6 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: git diff --exit-code -- dist/action.js
+      - run: pnpm generate --fixture medium --output examples/git-miner.svg
+      - run: git diff --exit-code -- examples/git-miner.svg
       - run: pnpm generate --fixture --output dist/ci-example.svg
